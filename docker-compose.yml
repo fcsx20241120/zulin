@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: zulin-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Zulin@2026}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-zulin}
+      MYSQL_USER: ${MYSQL_USER:-zulin}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-Zulin@2026}
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    networks:
+      - zulin_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-Zulin@2026}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: zulin-backend
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-zulin}:${MYSQL_PASSWORD:-Zulin@2026}@mysql:3306/${MYSQL_DATABASE:-zulin}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+    volumes:
+      - ./out:/app/out
+      - ./ht.docx:/app/ht.docx
+    networks:
+      - zulin_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    container_name: zulin-frontend
+    restart: always
+    depends_on:
+      - backend
+    networks:
+      - zulin_net
+
+  nginx:
+    image: nginx:alpine
+    container_name: zulin-nginx
+    restart: always
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./out:/usr/share/nginx/html/out:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - zulin_net
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  zulin_net:
+    driver: bridge

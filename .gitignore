@@ -7,9 +7,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.egg-info/
 
 # 环境变量（敏感信息）
 .env
+.env.local
+.env.production
 
 # IDE
 .vscode/
@@ -27,3 +30,25 @@ __pycache__/
 # 前端
 node_modules/
 dist/
+
+# Docker
+docker-compose.override.yml
+
+# 证书（敏感信息）
+nginx/ssl/*.pem
+nginx/ssl/*.key
+
+# 备份
+backups/
+*.sql
+
+# 临时文件
+nul
+temp_*.txt
+*.tmp
+
+# 导出文件
+out/*.docx
+
+# 模拟数据
+demo/
