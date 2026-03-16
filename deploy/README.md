@@ -1,0 +1,238 @@
+# Ubuntu 部署指南
+
+## 部署方式：Nginx + Gunicorn + Supervisor
+
+### 目录结构
+```
+/var/www/zulin/
+├── backend/           # 后端代码
+├── frontend/          # 前端代码（源码）
+├── venv/              # Python 虚拟环境
+└── deploy/            # 部署配置文件
+```
+
+## 快速部署
+
+### 1. 准备服务器
+
+```bash
+# SSH 登录服务器
+ssh user@your_server_ip
+
+# 更新系统
+sudo apt update && sudo apt upgrade -y
+```
+
+### 2. 上传项目文件
+
+```bash
+# 在本地执行（将项目上传到服务器）
+scp -r backend/ deploy/ user@your_server_ip:/tmp/zulin/
+scp -r frontend/ user@your_server_ip:/tmp/zulin/
+```
+
+### 3. 执行部署脚本
+
+```bash
+# 在服务器上执行
+sudo mv /tmp/zulin /var/www/zulin
+cd /var/www/zulin
+sudo bash deploy/deploy.sh
+```
+
+### 4. 修改配置
+
+```bash
+# 编辑环境变量（数据库密码、JWT 密钥）
+sudo nano /var/www/zulin/backend/.env
+
+# 编辑 Nginx 配置（域名）
+sudo nano /etc/nginx/sites-available/zulin
+```
+
+### 5. 重启服务
+
+```bash
+sudo supervisorctl restart zulin_backend
+sudo systemctl reload nginx
+```
+
+## 手动部署步骤
+
+### 安装依赖
+
+```bash
+# 系统依赖
+sudo apt install -y python3 python3-pip python3-venv nodejs npm nginx mysql-server
+
+# Python 依赖
+cd /var/www/zulin
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install gunicorn uvicorn
+cd backend
+pip install -r requirements.txt
+```
+
+### 构建前端
+
+```bash
+cd /var/www/zulin/frontend
+npm install
+npm run build
+cp -r dist/* /var/www/zulin/frontend/
+```
+
+### 配置 Nginx
+
+```bash
+sudo cp deploy/nginx.conf /etc/nginx/sites-available/zulin
+sudo ln -s /etc/nginx/sites-available/zulin /etc/nginx/sites-enabled/
+sudo rm /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+### 配置 Supervisor
+
+```bash
+sudo cp deploy/supervisor.conf /etc/supervisor/conf.d/zulin.conf
+sudo cp deploy/gunicorn.conf.py /var/www/zulin/backend/
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl start zulin_backend
+```
+
+### 配置数据库
+
+```bash
+# 登录 MySQL
+sudo mysql
+
+# 创建数据库和用户
+CREATE DATABASE IF NOT EXISTS zulin CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'zulin_user'@'localhost' IDENTIFIED BY 'your_secure_password';
+GRANT ALL PRIVILEGES ON zulin.* TO 'zulin_user'@'localhost';
+FLUSH PRIVILEGES;
+exit;
+```
+
+## 常用命令
+
+### 服务管理
+
+```bash
+# 查看服务状态
+sudo supervisorctl status
+
+# 重启后端
+sudo supervisorctl restart zulin_backend
+
+# 停止后端
+sudo supervisorctl stop zulin_backend
+
+# 查看后端日志
+sudo tail -f /var/log/zulin/backend_out.log
+sudo tail -f /var/log/zulin/backend_err.log
+
+# 查看 Nginx 日志
+sudo tail -f /var/log/nginx/access.log
+sudo tail -f /var/log/nginx/error.log
+```
+
+### 更新部署
+
+```bash
+cd /var/www/zulin
+
+# 备份当前版本
+sudo cp -r backend backend.bak
+sudo cp -r frontend frontend.bak
+
+# 上传新代码后...
+
+# 重启后端
+sudo supervisorctl restart zulin_backend
+
+# 验证无误后删除备份
+rm -rf backend.bak frontend.bak
+```
+
+## 安全建议
+
+1. **修改默认密码**：确保 `.env` 文件中的密码足够复杂
+2. **配置防火墙**：
+   ```bash
+   sudo ufw allow 22/tcp    # SSH
+   sudo ufw allow 80/tcp    # HTTP
+   sudo ufw allow 443/tcp   # HTTPS
+   sudo ufw enable
+   ```
+3. **启用 HTTPS**（推荐）：
+   ```bash
+   sudo apt install certbot python3-certbot-nginx
+   sudo certbot --nginx -d your_domain.com
+   ```
+4. **定期备份数据库**：
+   ```bash
+   mysqldump -u zulin_user -p zulin > backup_$(date +%Y%m%d).sql
+   ```
+
+## 故障排查
+
+### 后端无法启动
+
+```bash
+# 查看 Supervisor 日志
+sudo tail -f /var/log/zulin/backend_err.log
+
+# 检查 Python 依赖
+source /var/www/zulin/venv/bin/activate
+pip list
+
+# 测试直接运行
+cd /var/www/zulin/backend
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+### Nginx 报错 502
+
+```bash
+# 检查后端是否运行
+sudo supervisorctl status
+
+# 检查 Nginx 配置
+sudo nginx -t
+
+# 查看 Nginx 错误日志
+sudo tail -f /var/log/nginx/error.log
+```
+
+### 数据库连接失败
+
+```bash
+# 检查 MySQL 状态
+sudo systemctl status mysql
+
+# 测试数据库连接
+mysql -u zulin_user -p -e "SHOW DATABASES;"
+```
+
+## 性能优化建议
+
+1. **调整 Gunicorn worker 数量**：
+   ```python
+   # gunicorn.conf.py
+   workers = 4  # CPU 核心数 * 2 + 1
+   ```
+
+2. **启用 Nginx 缓存**：
+   ```nginx
+   proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=api_cache:10m;
+   ```
+
+3. **配置 MySQL 优化**：
+   ```bash
+   sudo nano /etc/mysql/mysql.conf.d/mysqld.cnf
+   ```

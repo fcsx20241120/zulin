@@ -31,12 +31,9 @@ __pycache__/
 node_modules/
 dist/
 
-# Docker
-docker-compose.override.yml
-
 # 证书（敏感信息）
-nginx/ssl/*.pem
-nginx/ssl/*.key
+*.pem
+*.key
 
 # 备份
 backups/
