@@ -42,9 +42,24 @@ sudo apt install -y python3 python3-pip python3-venv nginx
 
 # 安装 Node.js 20+（Vite 要求）
 if ! command -v node &> /dev/null || [[ $(node -v | cut -d'v' -f2 | cut -d'.' -f1) -lt 20 ]]; then
-    echo "安装 Node.js 20..."
+    echo "检测到 Node.js 版本过低或未安装，安装 Node.js 20..."
+    
+    # 先卸载旧的 nodejs 和 npm，避免依赖冲突
+    sudo apt remove --purge nodejs npm -y || true
+    sudo apt autoremove -y || true
+    
+    # 使用 NodeSource 安装 Node.js 20
     curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-    sudo apt-get install -y nodejs
+    sudo apt-get install -y nodejs || {
+        # 如果 NodeSource 安装失败，使用 nvm
+        echo "NodeSource 安装失败，使用 nvm 安装..."
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        nvm install 20
+        nvm use 20
+        nvm alias default 20
+    }
 fi
 
 # 4. 创建虚拟环境并安装 Python 依赖

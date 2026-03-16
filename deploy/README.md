@@ -94,8 +94,23 @@ sudo apt update
 sudo apt install -y python3 python3-pip python3-venv nginx
 
 # ⭐ 安装 Node.js 20+（Vite 要求）
+# 方法 1：使用 NodeSource（推荐）
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
+
+# 方法 2：如果方法 1 有依赖冲突，使用 nvm（最可靠）
+# 卸载冲突的包
+sudo apt remove --purge nodejs npm -y
+sudo apt autoremove -y
+
+# 安装 nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.bashrc
+
+# 使用 nvm 安装 Node.js 20
+nvm install 20
+nvm use 20
+nvm alias default 20
 
 # 验证版本（必须是 20.19+ 或 22.12+）
 node -v
@@ -104,7 +119,8 @@ npm -v
 
 **注意：** 如果系统已安装 Node.js 但版本过低（< 20），先卸载旧版本：
 ```bash
-sudo apt remove nodejs npm
+sudo apt remove --purge nodejs npm -y
+sudo apt autoremove -y
 ```
 
 ### 配置数据库账号密码 ⭐ 重要
