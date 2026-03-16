@@ -112,15 +112,25 @@ nvm install 20
 nvm use 20
 nvm alias default 20
 
-# 验证版本（必须是 20.19+ 或 22.12+）
-node -v
-npm -v
+# 方法 3：如果网络连接失败（无法访问 Docker/NodeSource 源）
+# 使用国内镜像源（阿里云）
+sudo tee /etc/apt/sources.list > /dev/null << 'EOF'
+deb http://mirrors.aliyun.com/ubuntu noble main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu noble-security main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu noble-updates main restricted universe multiverse
+EOF
+
+sudo apt update
+sudo apt install -y nodejs npm
 ```
 
-**注意：** 如果系统已安装 Node.js 但版本过低（< 20），先卸载旧版本：
+**网络问题处理：**
+如果遇到 `Could not handshake` 或 `Failed to fetch` 错误：
 ```bash
-sudo apt remove --purge nodejs npm -y
-sudo apt autoremove -y
+# 移除有问题的 Docker 源
+sudo rm /etc/apt/sources.list.d/docker.list
+sudo rm /etc/apt/keyrings/docker.gpg
+sudo apt update
 ```
 
 ### 配置数据库账号密码 ⭐ 重要

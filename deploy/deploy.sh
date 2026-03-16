@@ -37,7 +37,11 @@ read -p "按回车继续..."
 
 # 3. 安装系统依赖
 echo "[3/10] 安装系统依赖..."
-sudo apt update
+sudo apt update || {
+    echo "apt update 失败，尝试清理有问题的源..."
+    sudo rm /etc/apt/sources.list.d/docker.list 2>/dev/null || true
+    sudo apt update
+}
 sudo apt install -y python3 python3-pip python3-venv nginx
 
 # 安装 Node.js 20+（Vite 要求）
@@ -49,7 +53,8 @@ if ! command -v node &> /dev/null || [[ $(node -v | cut -d'v' -f2 | cut -d'.' -f
     sudo apt autoremove -y || true
     
     # 使用 NodeSource 安装 Node.js 20
-    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+    echo "尝试从 NodeSource 安装..."
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && \
     sudo apt-get install -y nodejs || {
         # 如果 NodeSource 安装失败，使用 nvm
         echo "NodeSource 安装失败，使用 nvm 安装..."
