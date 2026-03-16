@@ -37,8 +37,15 @@ read -p "按回车继续..."
 
 # 3. 安装系统依赖
 echo "[3/10] 安装系统依赖..."
-apt update
-apt install -y python3 python3-pip python3-venv nodejs npm nginx mysql-server
+sudo apt update
+sudo apt install -y python3 python3-pip python3-venv nginx
+
+# 安装 Node.js 20+（Vite 要求）
+if ! command -v node &> /dev/null || [[ $(node -v | cut -d'v' -f2 | cut -d'.' -f1) -lt 20 ]]; then
+    echo "安装 Node.js 20..."
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+fi
 
 # 4. 创建虚拟环境并安装 Python 依赖
 echo "[4/10] 配置 Python 虚拟环境..."

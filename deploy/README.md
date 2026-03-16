@@ -90,7 +90,21 @@ sudo systemctl reload nginx
 
 ```bash
 # 系统依赖
-sudo apt install -y python3 python3-pip python3-venv nodejs npm nginx mysql-server
+sudo apt update
+sudo apt install -y python3 python3-pip python3-venv nginx
+
+# ⭐ 安装 Node.js 20+（Vite 要求）
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# 验证版本（必须是 20.19+ 或 22.12+）
+node -v
+npm -v
+```
+
+**注意：** 如果系统已安装 Node.js 但版本过低（< 20），先卸载旧版本：
+```bash
+sudo apt remove nodejs npm
 ```
 
 ### 配置数据库账号密码 ⭐ 重要
