@@ -135,9 +135,25 @@ pip install -r requirements.txt
 
 ```bash
 cd /var/www/zulin/frontend
+
+# 安装依赖
 npm install
-npm run build
+
+# 构建项目（使用 npx 确保命令可执行）
+npx vite build
+
+# 复制静态文件到 Nginx 目录
 cp -r dist/* /var/www/zulin/frontend/
+```
+
+如果遇到 `Permission denied` 错误，执行：
+```bash
+# 修复 node_modules 权限
+chmod -R +x /var/www/zulin/frontend/node_modules/.bin/
+
+# 或者重新安装依赖
+rm -rf node_modules package-lock.json
+npm install
 ```
 
 ### 配置环境变量 ⭐ 重要

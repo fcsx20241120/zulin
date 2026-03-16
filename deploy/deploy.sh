@@ -54,7 +54,7 @@ pip install -r requirements.txt
 echo "[5/10] 构建前端..."
 cd $APP_DIR/frontend
 npm install
-npm run build
+npx vite build
 
 # 6. 复制前端静态文件到 Nginx 目录
 echo "[6/10] 部署前端静态文件..."
