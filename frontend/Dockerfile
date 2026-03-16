@@ -10,7 +10,7 @@ COPY . .
 
 ARG VITE_API_BASE_URL=http://localhost:8000
 
-RUN npm run build -- --skipLibCheck
+RUN npm run build
 
 FROM nginx:alpine
 
