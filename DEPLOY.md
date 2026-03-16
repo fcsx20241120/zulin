@@ -7,7 +7,25 @@
 - Docker Compose 2.0+
 - **现有 MySQL 8.0+ 服务器**
 
-## 部署步骤
+## 快速部署（推荐）
+
+```bash
+# 1. 下载项目
+git clone https://github.com/fcsx20241120/zulin.git
+cd zulin
+
+# 2. 执行快速部署脚本
+chmod +x quick-deploy.sh
+./quick-deploy.sh
+```
+
+部署完成后访问：
+- **前端**: http://your-server-ip:8088
+- **后端 API**: http://your-server-ip:8088/api/
+
+---
+
+## 手动部署
 
 ### 1. 安装 Docker
 
@@ -37,6 +55,206 @@ sudo systemctl start docker
 # 添加当前用户到 docker 组
 sudo usermod -aG docker $USER
 newgrp docker
+```
+
+### 2. 配置应用
+
+```bash
+# 克隆项目
+git clone https://github.com/fcsx20241120/zulin.git
+cd zulin
+
+# 复制配置文件
+cp .env.example .env
+```
+
+**.env 文件内容：**
+
+```bash
+# MySQL 数据库配置
+MYSQL_HOST=59.110.139.122
+MYSQL_PORT=3306
+MYSQL_DATABASE=zulin
+MYSQL_USER=root
+MYSQL_PASSWORD=1q2w3e4r
+
+# JWT 配置（生产环境请修改）
+SECRET_KEY=your-random-secret-key-at-least-32-characters-long
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# 前端 API 地址
+VITE_API_BASE_URL=http://localhost:8000
+
+# 服务端口
+HTTP_PORT=8088
+HTTPS_PORT=8089
+```
+
+### 3. 初始化 MySQL 数据库
+
+```bash
+# 连接 MySQL
+mysql -h 59.110.139.122 -u root -p
+
+# 执行 SQL
+mysql> CREATE DATABASE IF NOT EXISTS zulin DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+mysql> FLUSH PRIVILEGES;
+mysql> EXIT;
+```
+
+### 4. 部署应用
+
+```bash
+# 创建必要目录
+mkdir -p out nginx/ssl
+
+# 复制模板文件
+cp ht.docx out/ 2>/dev/null || true
+
+# 构建并启动
+docker compose up -d --build
+
+# 等待服务启动
+sleep 10
+
+# 初始化数据库表结构
+docker compose exec backend python init_db.py
+```
+
+### 5. 访问应用
+
+- 前端：http://your-server-ip:8088
+- 后端 API: http://your-server-ip:8088/api/
+
+---
+
+## 配置说明
+
+### 默认配置
+
+| 配置项 | 值 |
+|---|---|
+| MySQL 主机 | 59.110.139.122 |
+| MySQL 端口 | 3306 |
+| MySQL 数据库 | zulin |
+| MySQL 用户 | root |
+| 前端端口 | 8088 |
+| 后端端口 | 8089 (HTTPS) |
+
+### 修改端口
+
+编辑 `.env` 文件：
+
+```bash
+HTTP_PORT=8080      # 修改 HTTP 端口
+HTTPS_PORT=8443     # 修改 HTTPS 端口
+```
+
+重启服务：
+
+```bash
+docker compose down
+docker compose up -d
+```
+
+---
+
+## 常用运维命令
+
+```bash
+# 查看服务状态
+docker compose ps
+
+# 查看日志
+docker compose logs -f
+docker compose logs -f backend
+docker compose logs -f nginx
+
+# 重启服务
+docker compose restart
+
+# 停止服务
+docker compose down
+
+# 重新构建并启动
+docker compose up -d --build
+
+# 进入容器
+docker compose exec backend bash
+
+# 查看数据库连接
+docker compose exec backend python -c "from app.database import SessionLocal; print(SessionLocal().execute('SELECT 1').fetchone())"
+```
+
+---
+
+## 故障排查
+
+### 后端无法连接 MySQL
+
+```bash
+# 查看后端日志
+docker compose logs backend
+
+# 测试数据库连接
+docker compose exec backend python -c "
+from app.database import SessionLocal
+try:
+    db = SessionLocal()
+    db.execute('SELECT 1')
+    print('数据库连接成功')
+except Exception as e:
+    print(f'数据库连接失败：{e}')
+"
+```
+
+### 常见错误
+
+**错误 1：Access denied for user**
+```
+解决：检查 .env 中的 MYSQL_USER 和 MYSQL_PASSWORD 是否正确
+```
+
+**错误 2：Can't connect to MySQL server**
+```
+解决：
+1. 检查 MYSQL_HOST 和 MYSQL_PORT 是否正确
+2. 确保 MySQL 服务正在运行
+3. 检查防火墙设置：sudo ufw allow 3306/tcp
+```
+
+**错误 3：Unknown database 'zulin'**
+```
+解决：登录 MySQL 执行 CREATE DATABASE zulin;
+```
+
+---
+
+## 安全建议
+
+1. **修改 SECRET_KEY**：使用随机生成的 32+ 字符密钥
+2. **MySQL 密码**：生产环境使用强密码
+3. **防火墙**：只开放必要的端口（8088）
+4. **定期备份**：设置定时任务备份数据库
+5. **HTTPS**：生产环境建议配置 SSL 证书
+
+---
+
+## 数据备份
+
+```bash
+#!/bin/bash
+# backup.sh
+
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="./backups"
+
+mkdir -p $BACKUP_DIR
+
+mysqldump -h 59.110.139.122 -u root -p1q2w3e4r zulin > $BACKUP_DIR/zulin_$DATE.sql
+
+echo "备份完成：$BACKUP_DIR/zulin_$DATE.sql"
 ```
 
 ### 2. 配置 MySQL 数据库
