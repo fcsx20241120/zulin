@@ -42,7 +42,7 @@ sudo apt update || {
     sudo rm /etc/apt/sources.list.d/docker.list 2>/dev/null || true
     sudo apt update
 }
-sudo apt install -y python3 python3-pip python3-venv nginx
+sudo apt install -y python3 python3-pip python3-venv nginx supervisor
 
 # 安装 Node.js 20+（Vite 要求）
 if ! command -v node &> /dev/null || [[ $(node -v | cut -d'v' -f2 | cut -d'.' -f1) -lt 20 ]]; then
@@ -110,6 +110,11 @@ cp $APP_DIR/deploy/supervisor.conf /etc/supervisor/conf.d/$APP_NAME.conf
 cp $APP_DIR/deploy/gunicorn.conf.py $APP_DIR/backend/
 supervisorctl reread
 supervisorctl update
+
+# 启动 Supervisor 服务（如果未启动）
+systemctl enable supervisor
+systemctl start supervisor
+
 supervisorctl start $APP_NAME\_backend
 
 # 10. 配置数据库

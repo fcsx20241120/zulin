@@ -91,7 +91,7 @@ sudo systemctl reload nginx
 ```bash
 # 系统依赖
 sudo apt update
-sudo apt install -y python3 python3-pip python3-venv nginx
+sudo apt install -y python3 python3-pip python3-venv nginx supervisor
 
 # ⭐ 安装 Node.js 20+（Vite 要求）
 # 方法 1：使用 NodeSource（推荐）
