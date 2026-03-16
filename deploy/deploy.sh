@@ -87,10 +87,40 @@ supervisorctl start $APP_NAME\_backend
 
 # 10. 配置数据库
 echo "[10/10] 配置数据库..."
-mysql -e "CREATE DATABASE IF NOT EXISTS zulin CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql -e "CREATE USER IF NOT EXISTS 'zulin_user'@'localhost' IDENTIFIED BY 'your_secure_password_here';"
-mysql -e "GRANT ALL PRIVILEGES ON zulin.* TO 'zulin_user'@'localhost';"
-mysql -e "FLUSH PRIVILEGES;"
+echo ""
+echo "=========================================="
+echo "请配置数据库账号密码"
+echo "=========================================="
+echo ""
+echo "选项 1：使用脚本自动创建（推荐）"
+echo "选项 2：手动配置已有数据库"
+echo ""
+read -p "是否自动创建数据库？(y/n): " CREATE_DB
+
+if [ "$CREATE_DB" = "y" ]; then
+    # 设置数据库密码
+    read -p "设置数据库密码：" -s DB_PASSWORD
+    echo ""
+    
+    mysql -e "CREATE DATABASE IF NOT EXISTS zulin CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    mysql -e "CREATE USER IF NOT EXISTS 'zulin_user'@'localhost' IDENTIFIED BY '$DB_PASSWORD';"
+    mysql -e "GRANT ALL PRIVILEGES ON zulin.* TO 'zulin_user'@'localhost';"
+    mysql -e "FLUSH PRIVILEGES;"
+    
+    # 更新 .env 文件
+    sed -i "s/MYSQL_PASSWORD=.*/MYSQL_PASSWORD=$DB_PASSWORD/" $APP_DIR/backend/.env
+    echo "✓ 数据库创建成功"
+else
+    echo "请手动编辑 $APP_DIR/backend/.env 文件，配置数据库信息："
+    echo ""
+    echo "  MYSQL_HOST=localhost"
+    echo "  MYSQL_PORT=3306"
+    echo "  MYSQL_DATABASE=zulin"
+    echo "  MYSQL_USER=你的数据库用户名"
+    echo "  MYSQL_PASSWORD=你的数据库密码"
+    echo ""
+    sudo nano $APP_DIR/backend/.env
+fi
 
 # 初始化数据库表
 echo "初始化数据库表..."
@@ -103,11 +133,17 @@ Base.metadata.create_all(bind=engine)
 print('数据库表创建成功')
 "
 
+echo ""
 echo "=========================================="
 echo "部署完成！"
 echo "=========================================="
 echo "访问地址：http://your_server_ip"
-echo "查看后端日志：tail -f $LOG_DIR/backend_out.log"
-echo "查看 Supervisor 状态：supervisorctl status"
-echo "重启后端服务：supervisorctl restart $APP_NAME\_backend"
+echo ""
+echo "重要：请记录数据库配置信息"
+echo "配置文件：$APP_DIR/backend/.env"
+echo ""
+echo "管理命令："
+echo "  查看后端日志：tail -f $LOG_DIR/backend_out.log"
+echo "  查看 Supervisor 状态：supervisorctl status"
+echo "  重启后端服务：supervisorctl restart zulin_backend"
 echo "=========================================="

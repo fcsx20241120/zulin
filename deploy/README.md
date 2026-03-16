@@ -31,7 +31,23 @@ scp -r backend/ deploy/ user@your_server_ip:/tmp/zulin/
 scp -r frontend/ user@your_server_ip:/tmp/zulin/
 ```
 
-### 3. 执行部署脚本
+### 3. 配置数据库账号密码 ⭐ 重要
+
+```bash
+# 登录 MySQL
+sudo mysql -u root
+
+# 在 MySQL 中执行（请修改密码为你的强密码）：
+CREATE DATABASE IF NOT EXISTS zulin CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'zulin_user'@'localhost' IDENTIFIED BY 'YourSecurePassword123!';
+GRANT ALL PRIVILEGES ON zulin.* TO 'zulin_user'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+```
+
+**注意：** 请记住设置的密码，稍后需要填入 `.env` 文件中。
+
+### 4. 执行部署脚本
 
 ```bash
 # 在服务器上执行
@@ -40,17 +56,28 @@ cd /var/www/zulin
 sudo bash deploy/deploy.sh
 ```
 
-### 4. 修改配置
+### 5. 修改配置
 
 ```bash
-# 编辑环境变量（数据库密码、JWT 密钥）
+# 编辑环境变量（填入上面设置的数据库密码）
 sudo nano /var/www/zulin/backend/.env
+```
 
+修改以下内容：
+```bash
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DATABASE=zulin
+MYSQL_USER=zulin_user
+MYSQL_PASSWORD=YourSecurePassword123!  # 替换为你设置的密码
+```
+
+```bash
 # 编辑 Nginx 配置（域名）
 sudo nano /etc/nginx/sites-available/zulin
 ```
 
-### 5. 重启服务
+### 6. 重启服务
 
 ```bash
 sudo supervisorctl restart zulin_backend
@@ -64,8 +91,37 @@ sudo systemctl reload nginx
 ```bash
 # 系统依赖
 sudo apt install -y python3 python3-pip python3-venv nodejs npm nginx mysql-server
+```
 
-# Python 依赖
+### 配置数据库账号密码 ⭐ 重要
+
+```bash
+# 登录 MySQL
+sudo mysql
+
+# 在 MySQL 中执行以下 SQL（请根据实际情况修改密码）：
+-- 创建数据库
+CREATE DATABASE IF NOT EXISTS zulin CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- 创建用户（请将 'YourSecurePassword123!' 替换为你的强密码）
+CREATE USER 'zulin_user'@'localhost' IDENTIFIED BY 'YourSecurePassword123!';
+
+-- 授权
+GRANT ALL PRIVILEGES ON zulin.* TO 'zulin_user'@'localhost';
+FLUSH PRIVILEGES;
+
+-- 退出 MySQL
+EXIT;
+```
+
+**注意：** 
+- 请将 `YourSecurePassword123!` 替换为你自己的强密码
+- 记住设置的密码，稍后配置 `.env` 文件时需要使用
+- 如果 MySQL 已存在 zulin 数据库，可跳过创建步骤，直接使用现有数据库
+
+### 安装 Python 依赖
+
+```bash
 cd /var/www/zulin
 python3 -m venv venv
 source venv/bin/activate
@@ -73,6 +129,82 @@ pip install --upgrade pip
 pip install gunicorn uvicorn
 cd backend
 pip install -r requirements.txt
+```
+
+### 构建前端
+
+```bash
+cd /var/www/zulin/frontend
+npm install
+npm run build
+cp -r dist/* /var/www/zulin/frontend/
+```
+
+### 配置环境变量 ⭐ 重要
+
+```bash
+# 复制生产环境配置
+cp /var/www/zulin/deploy/.env.production /var/www/zulin/backend/.env
+
+# 编辑配置文件
+sudo nano /var/www/zulin/backend/.env
+```
+
+**必须修改以下内容：**
+```bash
+# MySQL 数据库配置
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DATABASE=zulin
+MYSQL_USER=zulin_user
+MYSQL_PASSWORD=YourSecurePassword123!  # ⭐ 替换为你上面设置的密码
+
+# JWT 配置（生产环境必须修改）
+SECRET_KEY=your-random-secret-key-min-32-chars  # ⭐ 使用随机生成的密钥
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+```
+
+**生成随机 SECRET_KEY：**
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+### 配置 Nginx
+
+```bash
+sudo cp deploy/nginx.conf /etc/nginx/sites-available/zulin
+sudo ln -s /etc/nginx/sites-available/zulin /etc/nginx/sites-enabled/
+sudo rm /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+### 配置 Supervisor
+
+```bash
+sudo cp deploy/supervisor.conf /etc/supervisor/conf.d/zulin.conf
+sudo cp deploy/gunicorn.conf.py /var/www/zulin/backend/
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl start zulin_backend
+```
+
+### 验证数据库连接
+
+```bash
+cd /var/www/zulin/backend
+source /var/www/zulin/venv/bin/activate
+python -c "
+from app.database import engine
+from sqlalchemy import text
+try:
+    with engine.connect() as conn:
+        result = conn.execute(text('SELECT 1'))
+        print('✓ 数据库连接成功')
+except Exception as e:
+    print(f'✗ 数据库连接失败：{e}')
+"
 ```
 
 ### 构建前端
@@ -217,6 +349,15 @@ sudo systemctl status mysql
 
 # 测试数据库连接
 mysql -u zulin_user -p -e "SHOW DATABASES;"
+
+# 如果提示密码错误，重置密码：
+sudo mysql
+ALTER USER 'zulin_user'@'localhost' IDENTIFIED BY 'YourNewPassword123!';
+FLUSH PRIVILEGES;
+EXIT;
+
+# 然后更新 .env 文件中的密码
+sudo nano /var/www/zulin/backend/.env
 ```
 
 ## 性能优化建议
