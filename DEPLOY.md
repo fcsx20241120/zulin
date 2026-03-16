@@ -1,12 +1,13 @@
-# Docker Compose 部署指南
+# 使用现有 MySQL 部署指南
 
 ## 前置要求
 
 - Ubuntu 24.04 LTS
 - Docker 20.10+
 - Docker Compose 2.0+
+- **现有 MySQL 8.0+ 服务器**
 
-## 快速开始
+## 部署步骤
 
 ### 1. 安装 Docker
 
@@ -33,11 +34,36 @@ sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin dock
 sudo systemctl enable docker
 sudo systemctl start docker
 
-# 添加当前用户到 docker 组（可选，避免每次使用 sudo）
+# 添加当前用户到 docker 组
 sudo usermod -aG docker $USER
+newgrp docker
 ```
 
-### 2. 部署应用
+### 2. 配置 MySQL 数据库
+
+```bash
+# 登录 MySQL
+mysql -u root -p
+
+# 执行初始化脚本（或手动执行）
+source mysql/init_external.sql
+```
+
+**或者手动执行 SQL：**
+
+```sql
+-- 创建数据库
+CREATE DATABASE IF NOT EXISTS zulin DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- 创建用户
+CREATE USER IF NOT EXISTS 'zulin'@'%' IDENTIFIED BY 'Zulin@2026!';
+
+-- 授权
+GRANT ALL PRIVILEGES ON zulin.* TO 'zulin'@'%';
+FLUSH PRIVILEGES;
+```
+
+### 3. 配置应用
 
 ```bash
 # 克隆项目
@@ -47,15 +73,39 @@ cd zulin
 # 复制配置文件
 cp .env.example .env
 
-# 修改配置（可选）
+# 编辑配置
 vim .env
+```
 
+**修改 .env 文件：**
+
+```bash
+# MySQL 配置（使用现有数据库）
+MYSQL_HOST=127.0.0.1          # 如果在同一台服务器，使用 127.0.0.1
+MYSQL_PORT=3306
+MYSQL_DATABASE=zulin
+MYSQL_USER=zulin
+MYSQL_PASSWORD=Zulin@2026!    # 修改为你的密码
+
+# JWT 配置（修改为随机字符串）
+SECRET_KEY=your-random-secret-key-at-least-32-characters-long
+
+# 前端 API 地址
+VITE_API_BASE_URL=http://localhost:8000
+
+# Nginx 端口
+HTTP_PORT=80
+```
+
+### 4. 部署应用
+
+```bash
 # 执行部署脚本
 chmod +x deploy.sh
 ./deploy.sh
 ```
 
-### 3. 初始化数据库
+### 5. 初始化数据库表结构
 
 ```bash
 # 进入后端容器
@@ -68,13 +118,93 @@ python init_db.py
 exit
 ```
 
-### 4. 访问应用
+### 6. 访问应用
 
 - 前端：http://your-server-ip
 - 后端 API: http://your-server-ip/api/
-- MySQL: localhost:3306
 
-## 常用命令
+---
+
+## MySQL 连接配置说明
+
+### 场景 1：MySQL 在同一台服务器
+
+```bash
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
+```
+
+### 场景 2：MySQL 在局域网其他服务器
+
+```bash
+MYSQL_HOST=192.168.1.50     # MySQL 服务器内网 IP
+MYSQL_PORT=3306
+```
+
+确保：
+1. MySQL 允许远程连接：`CREATE USER 'zulin'@'%' ...`
+2. 防火墙开放 3306 端口
+3. MySQL 配置 `bind-address = 0.0.0.0`
+
+### 场景 3：MySQL 在云服务器（如 RDS）
+
+```bash
+MYSQL_HOST=rm-xxxxx.mysql.rds.aliyuncs.com   # RDS 连接地址
+MYSQL_PORT=3306
+MYSQL_DATABASE=zulin
+MYSQL_USER=zulin
+MYSQL_PASSWORD=your-password
+```
+
+确保：
+1. RDS 白名单包含 Docker 服务器 IP
+2. 安全组开放 3306 端口
+
+---
+
+## 故障排查
+
+### 后端无法连接 MySQL
+
+```bash
+# 查看后端日志
+docker-compose logs backend
+
+# 测试数据库连接
+docker-compose exec backend python -c "
+from app.database import SessionLocal
+try:
+    db = SessionLocal()
+    db.execute('SELECT 1')
+    print('数据库连接成功')
+except Exception as e:
+    print(f'数据库连接失败：{e}')
+"
+```
+
+### 常见错误
+
+**错误 1：Access denied for user**
+```
+解决：检查 .env 中的 MYSQL_USER 和 MYSQL_PASSWORD 是否正确
+```
+
+**错误 2：Can't connect to MySQL server**
+```
+解决：
+1. 检查 MYSQL_HOST 和 MYSQL_PORT 是否正确
+2. 确保 MySQL 服务正在运行
+3. 检查防火墙设置
+```
+
+**错误 3：Unknown database 'zulin'**
+```
+解决：执行 MySQL 初始化脚本创建数据库
+```
+
+---
+
+## 常用运维命令
 
 ```bash
 # 查看服务状态
@@ -83,75 +213,27 @@ docker-compose ps
 # 查看日志
 docker-compose logs -f
 docker-compose logs -f backend
-docker-compose logs -f frontend
+docker-compose logs -f nginx
 
 # 重启服务
 docker-compose restart
 
-# 重启单个服务
-docker-compose restart backend
-
 # 停止服务
 docker-compose down
-
-# 停止并清理数据
-docker-compose down -v
 
 # 重新构建并启动
 docker-compose up -d --build
 
 # 进入容器
 docker-compose exec backend bash
-docker-compose exec mysql mysql -u zulin -p
+
+# 查看数据库连接
+docker-compose exec backend python -c "from app.database import SessionLocal; print(SessionLocal().execute('SELECT 1').fetchone())"
 ```
 
-## 配置说明
+---
 
-### .env 文件
-
-| 变量 | 说明 | 默认值 |
-|---|---|---|
-| MYSQL_ROOT_PASSWORD | MySQL root 密码 | Zulin@2026! |
-| MYSQL_DATABASE | 数据库名 | zulin |
-| MYSQL_USER | 数据库用户 | zulin |
-| MYSQL_PASSWORD | 数据库密码 | Zulin@2026! |
-| SECRET_KEY | JWT 密钥 | 请修改为随机字符串 |
-| HTTP_PORT | HTTP 端口 | 80 |
-| HTTPS_PORT | HTTPS 端口 | 443 |
-
-## 生产环境配置
-
-### 1. 配置 HTTPS（推荐）
-
-```bash
-# 使用 Let's Encrypt 获取证书
-sudo apt install certbot
-
-# 停止 Nginx 容器
-docker-compose stop nginx
-
-# 获取证书
-sudo certbot certonly --standalone -d your-domain.com
-
-# 复制证书到项目目录
-sudo cp /etc/letsencrypt/live/your-domain.com/fullchain.pem nginx/ssl/
-sudo cp /etc/letsencrypt/live/your-domain.com/privkey.pem nginx/ssl/
-
-# 重启 Nginx
-docker-compose restart nginx
-```
-
-### 2. 配置防火墙
-
-```bash
-# 开放必要端口
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw allow 22/tcp
-sudo ufw enable
-```
-
-### 3. 数据库备份
+## 数据备份
 
 ```bash
 #!/bin/bash
@@ -159,54 +241,25 @@ sudo ufw enable
 
 DATE=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR="./backups"
+MYSQL_HOST="127.0.0.1"
+MYSQL_USER="root"
+MYSQL_PASSWORD="your-root-password"
+MYSQL_DATABASE="zulin"
 
 mkdir -p $BACKUP_DIR
 
-docker-compose exec -T mysql mysqldump -u zulin -pZulin@2026! zulin > $BACKUP_DIR/zulin_$DATE.sql
+mysqldump -h $MYSQL_HOST -u $MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DATABASE > $BACKUP_DIR/zulin_$DATE.sql
 
 echo "备份完成：$BACKUP_DIR/zulin_$DATE.sql"
 ```
 
-## 故障排查
+---
 
-### 后端无法启动
+## 安全建议
 
-```bash
-# 查看日志
-docker-compose logs backend
-
-# 检查数据库连接
-docker-compose exec backend python -c "from app.database import SessionLocal; db = SessionLocal(); print('OK')"
-```
-
-### 前端无法访问后端
-
-1. 检查 `.env` 中的 `VITE_API_BASE_URL` 配置
-2. 重新构建前端：`docker-compose build frontend`
-3. 重启前端：`docker-compose restart frontend`
-
-### 数据库连接失败
-
-```bash
-# 检查 MySQL 是否启动
-docker-compose ps mysql
-
-# 查看 MySQL 日志
-docker-compose logs mysql
-
-# 测试连接
-docker-compose exec mysql mysql -u zulin -p -e "SHOW DATABASES;"
-```
-
-## 更新应用
-
-```bash
-# 拉取最新代码
-git pull
-
-# 重新构建并启动
-docker-compose up -d --build
-
-# 执行数据库迁移（如果有）
-docker-compose exec backend python migrate_add_user_id.py
-```
+1. **修改默认密码**：修改 `.env` 中的所有默认密码
+2. **SECRET_KEY**：使用随机生成的 32+ 字符密钥
+3. **MySQL 用户权限**：只授予必要的权限
+4. **防火墙**：只开放必要的端口（80/443）
+5. **定期备份**：设置定时任务备份数据库
+6. **HTTPS**：生产环境使用 HTTPS（配置 SSL 证书）

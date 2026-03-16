@@ -36,16 +36,15 @@ echo -e "${GREEN}✓ Docker 和 Docker Compose 已安装${NC}"
 if [ ! -f ".env" ]; then
     echo -e "${YELLOW}创建 .env 配置文件...${NC}"
     cp .env.example .env
-    echo -e "${GREEN}✓ 已创建 .env 文件，请根据实际情况修改配置${NC}"
+    echo -e "${YELLOW}请修改 .env 文件中的 MySQL 连接配置${NC}"
 fi
 
 # 创建必要的目录
 echo -e "${YELLOW}创建必要的目录...${NC}"
 mkdir -p nginx/ssl
 mkdir -p out
-mkdir -p mysql
 
-# 复制模板文件到 out 目录
+# 复制模板文件
 if [ -f "ht.docx" ]; then
     cp ht.docx ./out/ 2>/dev/null || true
 fi
@@ -64,22 +63,20 @@ docker-compose up -d 2>/dev/null || docker compose up -d
 
 # 等待服务启动
 echo -e "${YELLOW}等待服务启动...${NC}"
-sleep 15
+sleep 10
 
 # 检查服务状态
 echo -e "${YELLOW}检查服务状态...${NC}"
 docker-compose ps 2>/dev/null || docker compose ps
 
-# 显示日志
 echo ""
 echo -e "${GREEN}=========================================${NC}"
 echo -e "${GREEN}  部署完成！${NC}"
 echo -e "${GREEN}=========================================${NC}"
 echo ""
 echo "服务访问地址："
-echo "  - 前端：http://localhost"
-echo "  - 后端 API: http://localhost/api/"
-echo "  - MySQL: localhost:3306"
+echo -e "  - 前端：${GREEN}http://localhost${NC}"
+echo -e "  - 后端 API: ${GREEN}http://localhost/api/${NC}"
 echo ""
 echo "常用命令："
 echo "  查看日志：docker-compose logs -f"
@@ -88,8 +85,12 @@ echo "  停止服务：docker-compose down"
 echo "  查看状态：docker-compose ps"
 echo ""
 
-# 初始化数据库提示
-echo -e "${YELLOW}提示：首次启动需要初始化数据库${NC}"
-echo "请在后端容器中执行："
-echo "  docker-compose exec backend python init_db.py"
+# 数据库检查
+echo -e "${YELLOW}提示：请确保 MySQL 数据库已创建并配置正确${NC}"
+echo "可以在 .env 文件中修改 MySQL 连接配置："
+echo "  MYSQL_HOST=127.0.0.1"
+echo "  MYSQL_PORT=3306"
+echo "  MYSQL_DATABASE=zulin"
+echo "  MYSQL_USER=zulin"
+echo "  MYSQL_PASSWORD=your_password"
 echo ""

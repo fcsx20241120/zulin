@@ -52,3 +52,6 @@ out/*.docx
 
 # 模拟数据
 demo/
+
+# MySQL 初始化脚本（包含敏感信息）
+mysql/init_external.sql
