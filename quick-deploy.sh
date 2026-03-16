@@ -29,7 +29,7 @@ echo -e "${GREEN}✓ Docker 已就绪${NC}"
 # 创建 .env 文件
 cat > .env << EOF
 # MySQL 数据库配置
-MYSQL_HOST=59.110.139.122
+MYSQL_HOST=59.110
 MYSQL_PORT=3306
 MYSQL_DATABASE=zulin
 MYSQL_USER=root
