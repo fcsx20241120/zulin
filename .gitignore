@@ -1,0 +1,29 @@
+# 虚拟环境
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 环境变量（敏感信息）
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志
+*.log
+
+# 数据库
+*.db
+*.sqlite
+
+# 前端
+node_modules/
+dist/
