@@ -36,6 +36,11 @@ def get_current_user(
     return user
 
 
+def is_admin(user: User) -> bool:
+    """判断是否为管理员"""
+    return user.role == "admin"
+
+
 def validate_id_card(id_card: Optional[str]) -> Optional[str]:
     """验证身份证号格式"""
     if id_card is None:
@@ -102,15 +107,13 @@ def get_tenants(
     # 限制最大分页数量
     if limit > 100:
         limit = 100
-    # 只查询当前用户的租客
-    tenants = (
-        db.query(Tenant)
-        .filter(Tenant.user_id == current_user.id)
-        .order_by(Tenant.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+
+    # 管理员能看到所有数据，普通用户只能看自己的
+    query = db.query(Tenant)
+    if not is_admin(current_user):
+        query = query.filter(Tenant.user_id == current_user.id)
+
+    tenants = query.order_by(Tenant.created_at.desc()).offset(skip).limit(limit).all()
     return tenants
 
 
@@ -121,12 +124,14 @@ def get_tenant(
     current_user: User = Depends(get_current_user),
 ):
     """获取租客详情"""
-    # 只查询当前用户的租客
-    tenant = (
-        db.query(Tenant)
-        .filter(Tenant.id == tenant_id, Tenant.user_id == current_user.id)
-        .first()
-    )
+    # 管理员能看到所有数据，普通用户只能看自己的
+    query = db.query(Tenant)
+    if not is_admin(current_user):
+        query = query.filter(Tenant.id == tenant_id, Tenant.user_id == current_user.id)
+    else:
+        query = query.filter(Tenant.id == tenant_id)
+
+    tenant = query.first()
     if not tenant:
         raise HTTPException(status_code=404, detail="租客不存在")
     return tenant
@@ -140,12 +145,14 @@ def update_tenant(
     current_user: User = Depends(get_current_user),
 ):
     """更新租客信息"""
-    # 只查询当前用户的租客
-    tenant = (
-        db.query(Tenant)
-        .filter(Tenant.id == tenant_id, Tenant.user_id == current_user.id)
-        .first()
-    )
+    # 管理员能操作所有数据，普通用户只能操作自己的
+    query = db.query(Tenant)
+    if not is_admin(current_user):
+        query = query.filter(Tenant.id == tenant_id, Tenant.user_id == current_user.id)
+    else:
+        query = query.filter(Tenant.id == tenant_id)
+
+    tenant = query.first()
     if not tenant:
         raise HTTPException(status_code=404, detail="租客不存在")
 
@@ -170,12 +177,14 @@ def delete_tenant(
     current_user: User = Depends(get_current_user),
 ):
     """删除租客"""
-    # 只查询当前用户的租客
-    tenant = (
-        db.query(Tenant)
-        .filter(Tenant.id == tenant_id, Tenant.user_id == current_user.id)
-        .first()
-    )
+    # 管理员能操作所有数据，普通用户只能操作自己的
+    query = db.query(Tenant)
+    if not is_admin(current_user):
+        query = query.filter(Tenant.id == tenant_id, Tenant.user_id == current_user.id)
+    else:
+        query = query.filter(Tenant.id == tenant_id)
+
+    tenant = query.first()
     if not tenant:
         raise HTTPException(status_code=404, detail="租客不存在")
 

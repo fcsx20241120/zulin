@@ -11,7 +11,7 @@ export interface Announcement {
 
 // 获取公告列表
 export function getAnnouncements(type?: string) {
-  return request.get<Announcement[]>('/announcements/', { params: { type } })
+  return request.get<Announcement[]>('/announcements/', { params: { announcement_type: type } })
 }
 
 // 创建公告

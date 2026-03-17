@@ -7,7 +7,9 @@
           <el-button type="primary" @click="showAddDialog">新增合同</el-button>
         </div>
       </template>
-      <el-table :data="leases" style="width: 100%">
+      
+      <!-- 桌面端：表格视图 -->
+      <el-table :data="leases" style="width: 100%" class="desktop-table">
         <el-table-column prop="house_address" label="房屋地址" min-width="200" />
         <el-table-column label="起租日期" width="120">
           <template #default="{ row }">
@@ -23,11 +25,12 @@
         </el-table-column>
         <el-table-column prop="tenant_name" label="租客姓名" width="100" />
         <el-table-column prop="tenant_phone" label="租客电话" width="120" />
-        <el-table-column prop="status" label="状态" width="100">
+        <!-- 状态字段暂时隐藏，保留代码 -->
+        <!-- <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 'active' ? 'success' : 'info'">{{ row.status }}</el-tag>
           </template>
-        </el-table-column>
+        </el-table-column> -->
         <el-table-column label="操作" width="200">
           <template #default="{ row }">
             <el-button link type="primary" @click="goToDetail(row.id)">详情</el-button>
@@ -35,6 +38,43 @@
           </template>
         </el-table-column>
       </el-table>
+      
+      <!-- 移动端：卡片视图 -->
+      <div class="mobile-cards">
+        <div v-for="item in leases" :key="item.id" class="lease-card">
+          <div class="card-header-row">
+            <div class="card-title">{{ item.house_address }}</div>
+            <!-- 状态字段暂时隐藏，保留代码 -->
+            <!-- <el-tag :type="item.status === 'active' ? 'success' : 'info'">{{ item.status }}</el-tag> -->
+          </div>
+          <div class="card-dates">
+            <div class="date-item">
+              <span class="date-label">起租</span>
+              <span class="date-value">{{ formatDate(item.start_date) }}</span>
+            </div>
+            <div class="date-item">
+              <span class="date-label">到期</span>
+              <span :class="['date-value', getDateStatusClass(item.end_date)]">
+                {{ formatDate(item.end_date) }}
+              </span>
+            </div>
+          </div>
+          <div class="card-info-row">
+            <div class="info-item">
+              <span class="info-label">租客</span>
+              <span class="info-value">{{ item.tenant_name }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">电话</span>
+              <span class="info-value">{{ item.tenant_phone }}</span>
+            </div>
+          </div>
+          <div class="card-actions">
+            <el-button type="primary" size="small" @click="goToDetail(item.id)">详情</el-button>
+            <el-button type="danger" size="small" @click="handleDelete(item.id)">删除</el-button>
+          </div>
+        </div>
+      </div>
     </el-card>
 
     <!-- 新增合同对话框 - 分步向导 -->
@@ -73,7 +113,7 @@
             <el-form-item label="租客身份证号" prop="tenant_id_card">
               <el-input v-model="form.tenant_id_card" placeholder="请输入身份证号" />
             </el-form-item>
-            <el-form-item label="租客电话" prop="tenant_phone">
+            <el-form-item label="租客电话" prop="tenant_phone" required>
               <el-input v-model="form.tenant_phone" placeholder="请输入联系电话" type="tel" />
             </el-form-item>
             <el-form-item label="租客地址" prop="tenant_address">
@@ -228,11 +268,19 @@ const leaseFormRef = ref<FormInstance>()
 
 // 各步骤校验规则
 const tenantRules: FormRules = {
-  tenant_name: [{ required: true, message: '请输入租客姓名', trigger: 'blur' }]
+  tenant_name: [{ required: true, message: '请输入租客姓名', trigger: 'blur' }],
+  tenant_phone: [
+    { required: true, message: '请输入租客电话', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+  ]
 }
 
 const landlordRules: FormRules = {
-  landlord_name: [{ required: true, message: '请输入房东姓名', trigger: 'blur' }]
+  landlord_name: [{ required: true, message: '请输入房东姓名', trigger: 'blur' }],
+  landlord_phone: [
+    { required: true, message: '请输入房东电话', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+  ]
 }
 
 const houseRules: FormRules = {
@@ -465,12 +513,27 @@ onMounted(() => {
 .leases {
   padding: 15px;
   padding-bottom: 70px;
+  /* 适配安全区域 */
+  padding-top: constant(safe-area-inset-top);
+  padding-top: env(safe-area-inset-top);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 桌面端表格 */
+.desktop-table {
+  display: block;
+}
+
+/* 移动端卡片视图 - 默认隐藏 */
+.mobile-cards {
+  display: none;
 }
 
 .end-date {
@@ -486,6 +549,107 @@ onMounted(() => {
 .end-date.overdue {
   background-color: #fef0f0;
   color: #f56c6c;
+}
+
+/* 移动端卡片样式 */
+.lease-card {
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.lease-card:last-child {
+  margin-bottom: 0;
+}
+
+.card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+  margin-right: 10px;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.card-dates {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: #f5f7fa;
+  border-radius: 6px;
+}
+
+.date-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.date-label {
+  font-size: 12px;
+  color: #909399;
+}
+
+.date-value {
+  font-size: 13px;
+  color: #606266;
+  font-weight: 500;
+}
+
+.date-value.expiring-soon {
+  color: #67c23a;
+}
+
+.date-value.overdue {
+  color: #f56c6c;
+}
+
+.card-info-row {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 12px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #909399;
+}
+
+.info-value {
+  font-size: 13px;
+  color: #606266;
+}
+
+.card-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 1px solid #e4e7ed;
+}
+
+.card-actions .el-button {
+  margin: 0;
 }
 
 /* 分步对话框样式 */
@@ -618,7 +782,105 @@ onMounted(() => {
   min-width: 80px;
 }
 
-/* 响应式适配 */
+/* 表格移动端适配 */
+:deep(.el-table) {
+  font-size: 13px;
+}
+
+:deep(.el-table th) {
+  padding: 10px 0;
+  font-size: 13px;
+}
+
+:deep(.el-table td) {
+  padding: 10px 0;
+}
+
+/* 响应式：小屏幕显示卡片视图 */
+@media (max-width: 768px) {
+  .leases {
+    padding: 10px;
+    padding-bottom: 70px;
+  }
+  
+  /* 隐藏表格，显示卡片 */
+  .desktop-table {
+    display: none;
+  }
+  
+  .mobile-cards {
+    display: block;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .card-header .el-button {
+    width: 100%;
+  }
+}
+
+/* 小屏幕手机优化 */
+@media (max-width: 480px) {
+  .leases {
+    padding: 8px;
+  }
+  
+  .lease-card {
+    padding: 12px;
+  }
+  
+  .card-title {
+    font-size: 14px;
+  }
+  
+  .card-dates {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .card-info-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .card-actions {
+    flex-direction: column;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  
+  .card-actions .el-button {
+    width: 100%;
+    margin: 0 !important;
+    box-sizing: border-box;
+  }
+  
+  .step-circle {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+  
+  .step-label {
+    font-size: 10px;
+  }
+  
+  .step-footer {
+    gap: 6px;
+  }
+  
+  .step-footer .el-button {
+    flex: 1;
+    min-width: auto;
+    padding: 10px 15px;
+  }
+}
+
+/* 全屏对话框适配移动端 */
 @media (max-width: 480px) {
   .lease-step-dialog :deep(.el-dialog) {
     width: 100% !important;
@@ -627,6 +889,13 @@ onMounted(() => {
     border-radius: 0;
     height: 100vh;
     max-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .lease-step-dialog :deep(.el-dialog__header) {
+    padding: 15px;
+    flex-shrink: 0;
   }
 
   .lease-step-dialog :deep(.el-dialog__body) {
@@ -635,57 +904,28 @@ onMounted(() => {
     padding: 15px;
   }
 
-  .lease-step-dialog :deep(.el-dialog__header) {
-    padding: 15px;
-  }
-
   .lease-step-dialog :deep(.el-dialog__footer) {
     padding: 15px;
+    flex-shrink: 0;
   }
 
   .step-progress {
     margin-bottom: 20px;
   }
 
-  .step-circle {
-    width: 28px;
-    height: 28px;
-    font-size: 13px;
-  }
-
-  .step-label {
-    font-size: 11px;
-  }
-
   .step-content {
     min-height: auto;
   }
-
-  .step-footer {
-    gap: 8px;
-  }
-
-  .step-footer .el-button {
-    flex: 1;
-    min-width: auto;
-  }
 }
 
-@media (max-width: 768px) {
-  .leases {
-    padding: 10px;
+/* 适配 iPhone X 底部安全区域 */
+@media (max-width: 480px) and (min-height: 812px) {
+  .lease-step-dialog :deep(.el-dialog__footer) {
+    padding-bottom: calc(15px + env(safe-area-inset-bottom));
   }
   
-  :deep(.el-table) {
-    font-size: 12px;
-  }
-  
-  :deep(.el-table th) {
-    padding: 8px 0;
-  }
-  
-  :deep(.el-table td) {
-    padding: 8px 0;
+  .step-footer {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 </style>

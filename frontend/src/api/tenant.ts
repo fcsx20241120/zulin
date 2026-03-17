@@ -9,6 +9,8 @@ export interface Tenant {
   created_at: string
 }
 
+export type TenantResponse = Tenant
+
 // 获取租客列表
 export function getTenants(skip = 0, limit = 100) {
   return request.get<Tenant[]>('/tenants/', { params: { skip, limit } })

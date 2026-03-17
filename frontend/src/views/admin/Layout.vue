@@ -23,6 +23,10 @@
           <el-icon><UserFilled /></el-icon>
           <span>房东管理</span>
         </el-menu-item>
+        <el-menu-item index="/admin/feedbacks">
+          <el-icon><ChatDotRound /></el-icon>
+          <span>反馈管理</span>
+        </el-menu-item>
         <el-menu-item index="/admin/system">
           <el-icon><Setting /></el-icon>
           <span>系统管理</span>
@@ -45,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
@@ -55,6 +59,19 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const activeMenu = computed(() => route.path)
+
+onMounted(async () => {
+  // 检查用户权限
+  if (!userStore.userInfo) {
+    await userStore.getUserInfo()
+  }
+  
+  // 非管理员不能访问管理后台
+  if (userStore.userInfo?.role !== 'admin') {
+    ElMessage.error('无权访问管理后台')
+    router.replace('/home')
+  }
+})
 
 const handleLogout = () => {
   userStore.logout()

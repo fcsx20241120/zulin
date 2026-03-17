@@ -22,6 +22,14 @@
           </el-descriptions-item>
         </el-descriptions>
         
+        <div class="menu-list">
+          <div class="menu-item" @click="goToFeedback">
+            <span class="menu-icon">💬</span>
+            <span class="menu-text">用户反馈</span>
+            <el-icon class="menu-arrow"><ArrowRight /></el-icon>
+          </div>
+        </div>
+        
         <el-button type="danger" class="logout-btn" @click="handleLogout">退出登录</el-button>
       </div>
       
@@ -36,7 +44,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { UserFilled } from '@element-plus/icons-vue'
+import { UserFilled, ArrowRight } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
@@ -51,12 +59,19 @@ const handleLogout = () => {
 const goToLogin = () => {
   router.push('/login')
 }
+
+const goToFeedback = () => {
+  router.push('/feedback')
+}
 </script>
 
 <style scoped>
 .profile {
   padding: 20px;
   min-height: calc(100vh - 120px);
+  /* 适配安全区域 */
+  padding-top: constant(safe-area-inset-top);
+  padding-top: env(safe-area-inset-top);
 }
 
 .logged-in {
@@ -78,6 +93,47 @@ const goToLogin = () => {
   text-align: left;
 }
 
+.menu-list {
+  margin-bottom: 20px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.3s;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-item:hover {
+  background: #f5f7fa;
+}
+
+.menu-icon {
+  font-size: 20px;
+  margin-right: 10px;
+}
+
+.menu-text {
+  flex: 1;
+  font-size: 14px;
+  color: #606266;
+}
+
+.menu-arrow {
+  font-size: 16px;
+  color: #909399;
+}
+
 .logout-btn {
   width: 100%;
   max-width: 200px;
@@ -90,5 +146,44 @@ const goToLogin = () => {
 .login-btn {
   width: 100%;
   max-width: 200px;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .profile {
+    padding: 15px;
+  }
+  
+  .user-name {
+    font-size: 16px;
+  }
+  
+  :deep(.el-descriptions) {
+    font-size: 13px;
+  }
+  
+  :deep(.el-descriptions__label) {
+    font-size: 12px;
+  }
+}
+
+/* 小屏幕优化 */
+@media (max-width: 480px) {
+  .profile {
+    padding: 10px;
+  }
+  
+  .user-avatar {
+    margin-bottom: 12px;
+  }
+  
+  :deep(.el-avatar) {
+    width: 50px !important;
+    height: 50px !important;
+  }
+  
+  .user-name {
+    font-size: 15px;
+  }
 }
 </style>

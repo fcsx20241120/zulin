@@ -5,6 +5,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 import json
@@ -14,6 +15,9 @@ from jose import JWTError
 from app.database import get_db
 from app.models.lease import Lease
 from app.models.user import User
+from app.models.tenant import Tenant
+from app.models.house import House
+from app.models.landlord import Landlord
 from app.routers.auth import oauth2_scheme, jwt, SECRET_KEY, ALGORITHM
 
 router = APIRouter()
@@ -35,6 +39,11 @@ def get_current_user(
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
     return user
+
+
+def is_admin(user: User) -> bool:
+    """判断是否为管理员"""
+    return user.role == "admin"
 
 
 class LeaseCreate(BaseModel):
@@ -153,6 +162,43 @@ class LeaseWithRelationsResponse(BaseModel):
         from_attributes = True
 
 
+class StatsResponse(BaseModel):
+    contracts: int
+    tenants: int
+    houses: int
+    landlords: int
+
+
+@router.get("/stats", response_model=StatsResponse)
+def get_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """获取统计数据"""
+    # 管理员统计所有数据，普通用户只统计自己的
+    query = db.query(Lease)
+    if not is_admin(current_user):
+        query = query.filter(Lease.user_id == current_user.id)
+
+    contracts_count = query.count()
+
+    tenant_query = db.query(Tenant)
+    house_query = db.query(House)
+    landlord_query = db.query(Landlord)
+
+    if not is_admin(current_user):
+        tenant_query = tenant_query.filter(Tenant.user_id == current_user.id)
+        house_query = house_query.filter(House.user_id == current_user.id)
+        landlord_query = landlord_query.filter(Landlord.user_id == current_user.id)
+
+    return StatsResponse(
+        contracts=contracts_count,
+        tenants=tenant_query.count(),
+        houses=house_query.count(),
+        landlords=landlord_query.count(),
+    )
+
+
 @router.post("/", response_model=LeaseResponse)
 def create_lease(
     lease_data: LeaseCreate,
@@ -184,14 +230,17 @@ def get_leases(
     from app.models.tenant import Tenant
     from app.models.landlord import Landlord
 
+    # 管理员能看到所有数据，普通用户只能看自己的
+    query = db.query(Lease)
+    if not is_admin(current_user):
+        query = query.filter(Lease.user_id == current_user.id)
+
     leases = (
-        db.query(Lease)
-        .options(
+        query.options(
             joinedload(Lease.house),
             joinedload(Lease.tenant),
             joinedload(Lease.landlord),
         )
-        .filter(Lease.user_id == current_user.id)
         .order_by(Lease.created_at.desc())
         .offset(skip)
         .limit(limit)
@@ -250,15 +299,18 @@ def get_expiring_leases(
     now = datetime.now()
     seven_days_later = now + timedelta(days=7)
 
+    # 管理员能看到所有数据，普通用户只能看自己的
+    query = db.query(Lease)
+    if not is_admin(current_user):
+        query = query.filter(Lease.user_id == current_user.id)
+
     leases = (
-        db.query(Lease)
-        .options(
+        query.options(
             joinedload(Lease.house),
             joinedload(Lease.tenant),
             joinedload(Lease.landlord),
         )
         .filter(
-            Lease.user_id == current_user.id,
             Lease.status == "active",
             Lease.end_date != None,
             Lease.end_date >= now,
@@ -317,15 +369,18 @@ def get_overdue_leases(
 
     now = datetime.now()
 
+    # 管理员能看到所有数据，普通用户只能看自己的
+    query = db.query(Lease)
+    if not is_admin(current_user):
+        query = query.filter(Lease.user_id == current_user.id)
+
     leases = (
-        db.query(Lease)
-        .options(
+        query.options(
             joinedload(Lease.house),
             joinedload(Lease.tenant),
             joinedload(Lease.landlord),
         )
         .filter(
-            Lease.user_id == current_user.id,
             Lease.status == "active",
             Lease.end_date != None,
             Lease.end_date < now,
@@ -383,16 +438,18 @@ def get_lease(
     from app.models.tenant import Tenant
     from app.models.landlord import Landlord
 
-    lease = (
-        db.query(Lease)
-        .options(
-            joinedload(Lease.house),
-            joinedload(Lease.tenant),
-            joinedload(Lease.landlord),
-        )
-        .filter(Lease.id == lease_id, Lease.user_id == current_user.id)
-        .first()
+    # 管理员能看到所有数据，普通用户只能看自己的
+    query = db.query(Lease).options(
+        joinedload(Lease.house),
+        joinedload(Lease.tenant),
+        joinedload(Lease.landlord),
     )
+    if not is_admin(current_user):
+        query = query.filter(Lease.id == lease_id, Lease.user_id == current_user.id)
+    else:
+        query = query.filter(Lease.id == lease_id)
+
+    lease = query.first()
 
     if not lease:
         raise HTTPException(status_code=404, detail="租赁合同不存在")
@@ -540,11 +597,14 @@ def update_lease(
     current_user: User = Depends(get_current_user),
 ):
     """更新租赁合同信息"""
-    lease = (
-        db.query(Lease)
-        .filter(Lease.id == lease_id, Lease.user_id == current_user.id)
-        .first()
-    )
+    # 管理员能操作所有数据，普通用户只能操作自己的
+    query = db.query(Lease)
+    if not is_admin(current_user):
+        query = query.filter(Lease.id == lease_id, Lease.user_id == current_user.id)
+    else:
+        query = query.filter(Lease.id == lease_id)
+
+    lease = query.first()
     if not lease:
         raise HTTPException(status_code=404, detail="租赁合同不存在")
 
@@ -564,11 +624,14 @@ def delete_lease(
     current_user: User = Depends(get_current_user),
 ):
     """删除租赁合同"""
-    lease = (
-        db.query(Lease)
-        .filter(Lease.id == lease_id, Lease.user_id == current_user.id)
-        .first()
-    )
+    # 管理员能操作所有数据，普通用户只能操作自己的
+    query = db.query(Lease)
+    if not is_admin(current_user):
+        query = query.filter(Lease.id == lease_id, Lease.user_id == current_user.id)
+    else:
+        query = query.filter(Lease.id == lease_id)
+
+    lease = query.first()
     if not lease:
         raise HTTPException(status_code=404, detail="租赁合同不存在")
 

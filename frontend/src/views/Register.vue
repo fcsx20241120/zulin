@@ -89,6 +89,11 @@ const handleRegister = async () => {
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
+  /* 适配安全区域 */
+  padding-top: constant(safe-area-inset-top);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .register-card {
@@ -113,7 +118,12 @@ const handleRegister = async () => {
   text-decoration: none;
 }
 
+/* 移动端优化 */
 @media (max-width: 480px) {
+  .register-container {
+    padding: 15px;
+  }
+  
   .register-card {
     padding: 15px;
   }
@@ -121,6 +131,25 @@ const handleRegister = async () => {
   .title {
     font-size: 18px;
     margin-bottom: 20px;
+  }
+  
+  :deep(.el-input) {
+    font-size: 14px;
+  }
+  
+  :deep(.el-form-item) {
+    margin-bottom: 15px;
+  }
+}
+
+/* 小屏幕优化 */
+@media (max-width: 375px) {
+  .title {
+    font-size: 16px;
+  }
+  
+  .links a {
+    font-size: 13px;
   }
 }
 </style>

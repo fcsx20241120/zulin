@@ -40,6 +40,11 @@ const routes: RouteRecordRaw[] = [
         path: '/profile',
         name: 'Profile',
         component: () => import('@/views/Profile.vue')
+      },
+      {
+        path: '/feedback',
+        name: 'Feedback',
+        component: () => import('@/views/Feedback.vue')
       }
     ]
   },
@@ -81,6 +86,11 @@ const routes: RouteRecordRaw[] = [
         path: 'system',
         name: 'AdminSystem',
         component: () => import('@/views/admin/System.vue')
+      },
+      {
+        path: 'feedbacks',
+        name: 'AdminFeedbacks',
+        component: () => import('@/views/admin/Feedbacks.vue')
       }
     ]
   }

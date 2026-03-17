@@ -35,6 +35,11 @@ def get_current_user(
     return user
 
 
+def is_admin(user: User) -> bool:
+    """判断是否为管理员"""
+    return user.role == "admin"
+
+
 class LandlordCreate(BaseModel):
     name: str
     address: Optional[str] = None
@@ -84,13 +89,13 @@ def get_landlords(
     current_user: User = Depends(get_current_user),
 ):
     """获取房东列表（时间倒序）"""
+    # 管理员能看到所有数据，普通用户只能看自己的
+    query = db.query(Landlord)
+    if not is_admin(current_user):
+        query = query.filter(Landlord.user_id == current_user.id)
+
     landlords = (
-        db.query(Landlord)
-        .filter(Landlord.user_id == current_user.id)
-        .order_by(Landlord.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
+        query.order_by(Landlord.created_at.desc()).offset(skip).limit(limit).all()
     )
     return landlords
 
@@ -102,11 +107,16 @@ def get_landlord(
     current_user: User = Depends(get_current_user),
 ):
     """获取房东详情"""
-    landlord = (
-        db.query(Landlord)
-        .filter(Landlord.id == landlord_id, Landlord.user_id == current_user.id)
-        .first()
-    )
+    # 管理员能看到所有数据，普通用户只能看自己的
+    query = db.query(Landlord)
+    if not is_admin(current_user):
+        query = query.filter(
+            Landlord.id == landlord_id, Landlord.user_id == current_user.id
+        )
+    else:
+        query = query.filter(Landlord.id == landlord_id)
+
+    landlord = query.first()
     if not landlord:
         raise HTTPException(status_code=404, detail="房东不存在")
     return landlord
@@ -120,11 +130,16 @@ def update_landlord(
     current_user: User = Depends(get_current_user),
 ):
     """更新房东信息"""
-    landlord = (
-        db.query(Landlord)
-        .filter(Landlord.id == landlord_id, Landlord.user_id == current_user.id)
-        .first()
-    )
+    # 管理员能操作所有数据，普通用户只能操作自己的
+    query = db.query(Landlord)
+    if not is_admin(current_user):
+        query = query.filter(
+            Landlord.id == landlord_id, Landlord.user_id == current_user.id
+        )
+    else:
+        query = query.filter(Landlord.id == landlord_id)
+
+    landlord = query.first()
     if not landlord:
         raise HTTPException(status_code=404, detail="房东不存在")
 
@@ -144,11 +159,16 @@ def delete_landlord(
     current_user: User = Depends(get_current_user),
 ):
     """删除房东"""
-    landlord = (
-        db.query(Landlord)
-        .filter(Landlord.id == landlord_id, Landlord.user_id == current_user.id)
-        .first()
-    )
+    # 管理员能操作所有数据，普通用户只能操作自己的
+    query = db.query(Landlord)
+    if not is_admin(current_user):
+        query = query.filter(
+            Landlord.id == landlord_id, Landlord.user_id == current_user.id
+        )
+    else:
+        query = query.filter(Landlord.id == landlord_id)
+
+    landlord = query.first()
     if not landlord:
         raise HTTPException(status_code=404, detail="房东不存在")
 

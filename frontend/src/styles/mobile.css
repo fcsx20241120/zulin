@@ -1,0 +1,153 @@
+/* 全局移动端适配样式 */
+
+/* 防止 iOS 缩放 */
+* {
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+/* 防止长按选中文本 */
+@media (max-width: 768px) {
+  * {
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+  
+  /* 输入框和可编辑区域允许选中 */
+  input, textarea, [contenteditable="true"] {
+    user-select: text;
+  }
+}
+
+/* 点击高亮效果 */
+@media (max-width: 768px) {
+  a, button, .el-button, .el-menu-item {
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Element Plus 组件移动端适配 */
+@media (max-width: 768px) {
+  /* 按钮最小点击区域 */
+  .el-button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 20px;
+  }
+  
+  /* 表单输入框高度 */
+  .el-input__inner,
+  .el-textarea__inner {
+    min-height: 44px;
+    font-size: 14px;
+  }
+  
+  /* 选择器 */
+  .el-select {
+    width: 100%;
+  }
+  
+  /* 日期选择器 */
+  .el-date-editor {
+    width: 100% !important;
+  }
+  
+  /* 对话框头部和底部适配 */
+  .el-dialog__header {
+    padding: 15px;
+  }
+  
+  .el-dialog__footer {
+    padding: 10px 15px;
+  }
+  
+  /* 卡片内边距 */
+  .el-card__body {
+    padding: 15px;
+  }
+  
+  /* 表格适配 */
+  .el-table {
+    font-size: 12px;
+  }
+  
+  .el-table th,
+  .el-table td {
+    padding: 8px 0;
+  }
+  
+  /* 描述列表适配 */
+  .el-descriptions {
+    font-size: 13px;
+  }
+  
+  .el-descriptions__label,
+  .el-descriptions__content {
+    font-size: 12px;
+  }
+  
+  /* 标签页适配 */
+  .el-tabs__item {
+    padding: 0 15px;
+    font-size: 14px;
+  }
+  
+  /* 消息提示位置 */
+  .el-message {
+    top: 60px !important;
+  }
+}
+
+/* 小屏幕手机优化 */
+@media (max-width: 480px) {
+  /* 页面标题字体缩小 */
+  h1 {
+    font-size: 20px;
+  }
+  
+  h2 {
+    font-size: 18px;
+  }
+  
+  h3 {
+    font-size: 16px;
+  }
+  
+  /* 段落字体 */
+  p {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+}
+
+/* iPhone X 系列安全区域适配 */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* 防止 iPhone 刘海遮挡 */
+@supports (padding-top: env(safe-area-inset-top)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* 横屏适配 */
+@media (max-height: 500px) and (orientation: landscape) {
+  .login-container,
+  .register-container {
+    align-items: flex-start;
+    padding-top: 50px;
+  }
+  
+  .login-card,
+  .register-card {
+    max-width: 500px;
+  }
+}

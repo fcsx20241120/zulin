@@ -44,6 +44,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { getAnnouncements } from '@/api/announcement'
+import { getStats } from '@/api/lease'
 
 const stats = ref({
   contracts: 0,
@@ -53,6 +54,14 @@ const stats = ref({
 })
 
 const announcements = ref<any[]>([])
+
+const loadStats = async () => {
+  try {
+    stats.value = await getStats()
+  } catch (error) {
+    console.error('获取统计数据失败', error)
+  }
+}
 
 const loadAnnouncements = async () => {
   try {
@@ -72,6 +81,7 @@ const formatDate = (date: string | Date): string => {
 }
 
 onMounted(() => {
+  loadStats()
   loadAnnouncements()
 })
 </script>

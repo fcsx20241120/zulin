@@ -14,7 +14,6 @@
         </el-form-item>
         <div class="links">
           <router-link to="/register">注册账号</router-link>
-          <router-link to="/admin/dashboard">管理后台</router-link>
         </div>
       </el-form>
     </el-card>
@@ -49,9 +48,14 @@ const handleLogin = async () => {
     if (!valid) return
     loading.value = true
     try {
-      await userStore.userLogin(form.username, form.password)
+      const res = await userStore.userLogin(form.username, form.password)
       ElMessage.success('登录成功')
-      router.push('/home')
+      // 根据角色跳转不同页面
+      if (res.role === 'admin') {
+        router.push('/admin/dashboard')
+      } else {
+        router.push('/home')
+      }
     } catch (error: any) {
       ElMessage.error(error.response?.data?.detail || '登录失败')
     } finally {
@@ -69,6 +73,11 @@ const handleLogin = async () => {
   height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
+  /* 适配安全区域 */
+  padding-top: constant(safe-area-inset-top);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .login-card {
@@ -95,7 +104,12 @@ const handleLogin = async () => {
   text-decoration: none;
 }
 
+/* 移动端优化 */
 @media (max-width: 480px) {
+  .login-container {
+    padding: 15px;
+  }
+  
   .login-card {
     padding: 15px;
   }
@@ -103,6 +117,25 @@ const handleLogin = async () => {
   .title {
     font-size: 18px;
     margin-bottom: 20px;
+  }
+  
+  :deep(.el-input) {
+    font-size: 14px;
+  }
+  
+  :deep(.el-form-item) {
+    margin-bottom: 15px;
+  }
+}
+
+/* 小屏幕优化 */
+@media (max-width: 375px) {
+  .title {
+    font-size: 16px;
+  }
+  
+  .links {
+    font-size: 13px;
   }
 }
 </style>

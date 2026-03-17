@@ -69,3 +69,8 @@ export function exportLease(id: number) {
 export function deleteLease(id: number) {
   return request.delete(`/leases/${id}`)
 }
+
+// 获取统计数据
+export function getStats() {
+  return request.get<{ contracts: number; tenants: number; houses: number; landlords: number }>('/leases/stats')
+}

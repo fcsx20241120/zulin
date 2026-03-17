@@ -5,7 +5,13 @@
     </el-main>
     
     <el-footer class="bottom-nav">
-      <el-menu mode="horizontal" :default-active="activeMenu" router class="nav-menu">
+      <el-menu 
+        mode="horizontal" 
+        :default-active="activeMenu" 
+        router 
+        class="nav-menu"
+        :ellipsis="false"
+      >
         <el-menu-item index="/home" class="nav-item">
           <el-icon><HomeFilled /></el-icon>
           <span>首页</span>
@@ -42,6 +48,7 @@ const activeMenu = computed(() => route.path)
 .main-content {
   flex: 1;
   padding: 0;
+  /* 底部导航栏高度 */
   margin-bottom: 60px;
 }
 
@@ -55,12 +62,17 @@ const activeMenu = computed(() => route.path)
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
   padding: 0;
   z-index: 1000;
+  display: flex;
+  align-items: center;
 }
 
 .nav-menu {
   display: flex;
   justify-content: space-around;
   border-bottom: none;
+  width: 100%;
+  /* 覆盖 Element Plus 默认样式 */
+  border-right: none !important;
 }
 
 .nav-item {
@@ -68,7 +80,7 @@ const activeMenu = computed(() => route.path)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 60px;
+  height: 60px !important;
   flex: 1;
   max-width: 120px;
 }
@@ -80,5 +92,67 @@ const activeMenu = computed(() => route.path)
 
 .nav-item span {
   font-size: 12px;
+}
+
+/* 强制覆盖 Element Plus 样式 */
+:deep(.el-menu--horizontal) {
+  border-bottom: none !important;
+}
+
+:deep(.el-menu-item) {
+  height: 60px !important;
+  line-height: 60px !important;
+  border-bottom: none !important;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .nav-item {
+    max-width: none;
+  }
+  
+  .nav-item .el-icon {
+    font-size: 20px;
+  }
+  
+  .nav-item span {
+    font-size: 11px;
+  }
+}
+
+/* 小屏幕手机优化 */
+@media (max-width: 480px) {
+  .bottom-nav {
+    height: 55px;
+  }
+  
+  .main-content {
+    margin-bottom: 55px;
+  }
+  
+  .nav-item {
+    height: 55px !important;
+    line-height: 55px !important;
+  }
+  
+  .nav-item .el-icon {
+    font-size: 18px;
+    margin-bottom: 1px;
+  }
+  
+  .nav-item span {
+    font-size: 10px;
+  }
+}
+
+/* 超小屏幕优化 */
+@media (max-width: 375px) {
+  .nav-item span {
+    font-size: 9px;
+  }
+  
+  .nav-item .el-icon {
+    font-size: 16px;
+  }
 }
 </style>

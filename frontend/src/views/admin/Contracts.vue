@@ -4,7 +4,6 @@
       <template #header>
         <div class="card-header">
           <span>合同管理</span>
-          <el-button type="primary" @click="dialogVisible = true">新增合同</el-button>
         </div>
       </template>
       <el-table :data="contracts" style="width: 100%">
@@ -23,16 +22,15 @@
             <el-tag :type="row.status === 'active' ? 'success' : 'info'">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150">
+        <el-table-column label="操作" width="100">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row.id)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" title="合同信息" width="500px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
       <el-form :model="form" label-width="100px">
         <el-form-item label="租客 ID">
           <el-input-number v-model="form.tenant_id" :min="1" />
@@ -76,11 +74,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { getLeases, createLease, updateLease, deleteLease } from '@/api/lease'
+import { ElMessage } from 'element-plus'
+import { getLeases, updateLease } from '@/api/lease'
 
 const contracts = ref<any[]>([])
 const dialogVisible = ref(false)
+const editingId = ref<number | null>(null)
+const dialogTitle = ref('新增合同')
+
 const getCurrentDate = () => {
   const now = new Date()
   return now.toISOString().split('T')[0]
@@ -114,28 +115,42 @@ const handleLeaseYearsChange = (value: number) => {
   }
 }
 
+const handleEdit = (row: any) => {
+  editingId.value = row.id
+  dialogTitle.value = '编辑合同'
+  form.value = {
+    tenant_id: row.tenant_id,
+    landlord_id: row.landlord_id,
+    house_id: row.house_id,
+    lease_years: row.lease_years,
+    start_date: row.start_date,
+    end_date: row.end_date,
+    monthly_rent: row.monthly_rent,
+    payment_type: row.payment_type,
+    deposit: row.deposit
+  }
+  dialogVisible.value = true
+}
+
 const handleSubmit = async () => {
   try {
     if (!form.value.start_date || !form.value.end_date) {
       ElMessage.error('请选择开始日期和结束日期')
       return
     }
-    await createLease(form.value)
-    ElMessage.success('创建成功')
+    
+    if (editingId.value) {
+      await updateLease(editingId.value, form.value)
+      ElMessage.success('更新成功')
+    }
+    
     dialogVisible.value = false
+    editingId.value = null
+    dialogTitle.value = '编辑合同'
     loadContracts()
   } catch (error: any) {
-    ElMessage.error('创建失败：' + (error.response?.data?.detail || error.message))
+    ElMessage.error('操作失败：' + (error.response?.data?.detail || error.message))
   }
-}
-
-const handleDelete = async (id: number) => {
-  try {
-    await ElMessageBox.confirm('确定删除吗？', '提示', { type: 'warning' })
-    await deleteLease(id)
-    ElMessage.success('删除成功')
-    loadContracts()
-  } catch (error) {}
 }
 
 const formatDate = (date: string | Date): string => {

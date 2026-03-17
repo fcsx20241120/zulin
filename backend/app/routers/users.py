@@ -21,10 +21,21 @@ from jose import JWTError
 router = APIRouter()
 
 
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    role: Optional[str] = "user"
+    is_active: Optional[bool] = True
+
+
 class UserUpdate(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
+    role: Optional[str] = None
     is_active: Optional[bool] = None
+    password: Optional[str] = None
 
 
 class UserResponse(BaseModel):
@@ -56,6 +67,57 @@ def get_current_admin_user(
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
     return user
+
+
+@router.post("/", response_model=UserResponse)
+def create_user(
+    user_data: UserCreate,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    """创建用户（仅管理员）"""
+    # 检查用户名是否存在
+    existing_user = db.query(User).filter(User.username == user_data.username).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="用户名已存在")
+
+    # 将空字符串转换为 None
+    email = user_data.email if user_data.email and user_data.email.strip() else None
+    phone = user_data.phone if user_data.phone and user_data.phone.strip() else None
+
+    # 创建用户
+    db_user = User(
+        username=user_data.username,
+        password=get_password_hash(user_data.password),
+        email=email,
+        phone=phone,
+        role=user_data.role,
+        is_active=user_data.is_active,
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+@router.delete("/{user_id}")
+def delete_user(
+    user_id: int,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    """删除用户（仅管理员）"""
+    # 不能删除 admin 账号
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    if user.username == "admin":
+        raise HTTPException(status_code=403, detail="不能删除 admin 账号")
+
+    db.delete(user)
+    db.commit()
+    return {"message": "删除成功"}
 
 
 @router.get("/", response_model=List[UserResponse])
@@ -95,12 +157,21 @@ def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
 
+    # 不能修改 admin 账号的用户名
+    if user.username == "admin":
+        raise HTTPException(status_code=403, detail="不能修改 admin 账号")
+
+    # 将空字符串转换为 None
     if user_data.email is not None:
-        user.email = user_data.email
+        user.email = user_data.email if user_data.email.strip() else None
     if user_data.phone is not None:
-        user.phone = user_data.phone
+        user.phone = user_data.phone if user_data.phone.strip() else None
+    if user_data.role is not None:
+        user.role = user_data.role
     if user_data.is_active is not None:
         user.is_active = user_data.is_active
+    if user_data.password is not None and user_data.password:
+        user.password = get_password_hash(user_data.password)
 
     db.commit()
     db.refresh(user)

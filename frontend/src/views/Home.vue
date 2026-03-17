@@ -42,11 +42,22 @@
           <span>用户公告</span>
         </div>
       </template>
-      <div v-for="item in announcements" :key="item.id" class="announcement-item">
+      <div v-for="item in announcements" :key="item.id" class="announcement-item" @click="showAnnouncementDetail(item)">
         <div class="announcement-title">{{ item.title }}</div>
+        <div class="announcement-preview">{{ truncateContent(item.content) }}</div>
         <div class="announcement-date">{{ formatDate(item.created_at) }}</div>
       </div>
     </el-card>
+
+    <el-dialog v-model="detailVisible" :title="selectedAnnouncement?.title" width="600px">
+      <div class="announcement-detail">
+        <div class="detail-date">{{ selectedAnnouncement ? formatDate(selectedAnnouncement.created_at) : '' }}</div>
+        <div class="detail-content">{{ selectedAnnouncement?.content }}</div>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -63,6 +74,18 @@ const currentDate = ref(new Date().toLocaleDateString())
 const announcements = ref<any[]>([])
 const expiringLeases = ref<any[]>([])
 const overdueLeases = ref<any[]>([])
+const detailVisible = ref(false)
+const selectedAnnouncement = ref<any>(null)
+
+const truncateContent = (content: string): string => {
+  if (!content) return ''
+  return content.length > 50 ? content.substring(0, 50) + '...' : content
+}
+
+const showAnnouncementDetail = (item: any) => {
+  selectedAnnouncement.value = item
+  detailVisible.value = true
+}
 
 const loadAnnouncements = async () => {
   try {
@@ -135,6 +158,9 @@ onMounted(() => {
 .home {
   padding: 15px;
   padding-bottom: 70px;
+  /* 适配安全区域 */
+  padding-top: constant(safe-area-inset-top);
+  padding-top: env(safe-area-inset-top);
 }
 
 .welcome-card {
@@ -145,6 +171,8 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .announcement-item,
@@ -152,6 +180,8 @@ onMounted(() => {
   padding: 10px 0;
   border-bottom: 1px solid #eee;
   cursor: pointer;
+  /* 文字自动换行 */
+  word-break: break-word;
 }
 
 .announcement-item:last-child,
@@ -159,9 +189,25 @@ onMounted(() => {
   border-bottom: none;
 }
 
+.announcement-item:hover {
+  background-color: #f5f7fa;
+}
+
 .announcement-title,
 .lease-title {
   font-weight: 500;
+  /* 防止标题溢出 */
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.announcement-preview {
+  font-size: 13px;
+  color: #666;
+  margin-top: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .announcement-date,
@@ -169,12 +215,33 @@ onMounted(() => {
   font-size: 12px;
   color: #999;
   margin-top: 5px;
+  white-space: nowrap;
+}
+
+.announcement-detail {
+  padding: 10px 0;
+}
+
+.detail-date {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 15px;
+}
+
+.detail-content {
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .lease-info {
   font-size: 13px;
   color: #666;
   margin-top: 4px;
+  /* 地址等信息自动换行 */
+  word-break: break-word;
 }
 
 .lease-item.overdue {
@@ -188,9 +255,19 @@ onMounted(() => {
   font-weight: 500;
 }
 
+/* 移动端优化 */
 @media (max-width: 768px) {
   .home {
     padding: 10px;
+    padding-bottom: 70px;
+  }
+  
+  .welcome-card h2 {
+    font-size: 16px;
+  }
+  
+  .welcome-card p {
+    font-size: 13px;
   }
   
   .el-row {
@@ -199,6 +276,52 @@ onMounted(() => {
   
   .el-col {
     margin-bottom: 15px;
+  }
+  
+  /* 卡片内边距调整 */
+  :deep(.el-card__body) {
+    padding: 12px;
+  }
+}
+
+/* 小屏幕手机优化 */
+@media (max-width: 480px) {
+  .home {
+    padding: 8px;
+  }
+  
+  .welcome-card h2 {
+    font-size: 15px;
+  }
+  
+  .lease-title {
+    font-size: 14px;
+  }
+  
+  .lease-info {
+    font-size: 12px;
+  }
+  
+  .announcement-title {
+    font-size: 14px;
+  }
+}
+
+/* 弹窗移动端适配 */
+:deep(.el-dialog) {
+  max-width: 90%;
+  margin: 0 auto;
+}
+
+@media (max-width: 480px) {
+  :deep(.el-dialog) {
+    width: 95% !important;
+    max-width: 95% !important;
+  }
+  
+  :deep(.el-dialog__body) {
+    max-height: 70vh;
+    overflow-y: auto;
   }
 }
 </style>

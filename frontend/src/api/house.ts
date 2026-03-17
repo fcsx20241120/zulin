@@ -9,6 +9,8 @@ export interface House {
   created_at: string
 }
 
+export type HouseResponse = House
+
 // 获取房屋列表
 export function getHouses(skip = 0, limit = 100) {
   return request.get<House[]>('/houses/', { params: { skip, limit } })
