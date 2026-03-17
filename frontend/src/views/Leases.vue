@@ -8,8 +8,38 @@
         </div>
       </template>
       
+      <!-- 搜索栏 -->
+      <div class="search-bar">
+        <el-input
+          v-model="searchQuery.house_address"
+          placeholder="搜索房屋地址"
+          clearable
+          @input="filterLeases"
+          class="search-input"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        <el-input
+          v-model="searchQuery.tenant_name"
+          placeholder="搜索租客姓名"
+          clearable
+          @input="filterLeases"
+          class="search-input"
+        />
+        <el-input
+          v-model="searchQuery.tenant_phone"
+          placeholder="搜索手机号"
+          clearable
+          @input="filterLeases"
+          class="search-input"
+        />
+        <el-button @click="resetSearch" class="reset-btn">重置</el-button>
+      </div>
+      
       <!-- 桌面端：表格视图 -->
-      <el-table :data="leases" style="width: 100%" class="desktop-table">
+      <el-table :data="filteredLeases" style="width: 100%" class="desktop-table">
         <el-table-column prop="house_address" label="房屋地址" min-width="200" />
         <el-table-column label="起租日期" width="120">
           <template #default="{ row }">
@@ -41,7 +71,7 @@
       
       <!-- 移动端：卡片视图 -->
       <div class="mobile-cards">
-        <div v-for="item in leases" :key="item.id" class="lease-card">
+        <div v-for="item in filteredLeases" :key="item.id" class="lease-card">
           <div class="card-header-row">
             <div class="card-title">{{ item.house_address }}</div>
             <!-- 状态字段暂时隐藏，保留代码 -->
@@ -214,9 +244,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { getLeases, createLease, deleteLease } from '@/api/lease'
 import { createTenant } from '@/api/tenant'
 import { createLandlord } from '@/api/landlord'
@@ -227,6 +258,45 @@ const router = useRouter()
 const leases = ref<Lease[]>([])
 const dialogVisible = ref(false)
 const currentStep = ref(0)
+
+// 搜索条件
+const searchQuery = ref({
+  house_address: '',
+  tenant_name: '',
+  tenant_phone: ''
+})
+
+// 过滤后的租赁列表
+const filteredLeases = computed(() => {
+  if (!searchQuery.value.house_address && !searchQuery.value.tenant_name && !searchQuery.value.tenant_phone) {
+    return leases.value
+  }
+  
+  return leases.value.filter(lease => {
+    const matchAddress = !searchQuery.value.house_address || 
+      lease.house_address?.toLowerCase().includes(searchQuery.value.house_address.toLowerCase())
+    
+    const matchName = !searchQuery.value.tenant_name || 
+      lease.tenant_name?.toLowerCase().includes(searchQuery.value.tenant_name.toLowerCase())
+    
+    const matchPhone = !searchQuery.value.tenant_phone || 
+      lease.tenant_phone?.includes(searchQuery.value.tenant_phone)
+    
+    return matchAddress && matchName && matchPhone
+  })
+})
+
+const filterLeases = () => {
+  // 触发响应式更新
+}
+
+const resetSearch = () => {
+  searchQuery.value = {
+    house_address: '',
+    tenant_name: '',
+    tenant_phone: ''
+  }
+}
 
 const formatDate = (date: Date | string): string => {
   if (!date) return ''
@@ -526,6 +596,31 @@ onMounted(() => {
   gap: 8px;
 }
 
+/* 搜索栏样式 */
+.search-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 150px;
+}
+
+.search-input :deep(.el-input__inner) {
+  border-radius: 20px;
+}
+
+.reset-btn {
+  flex-shrink: 0;
+}
+
+.desktop-table {
+  display: block;
+}
+
 /* 桌面端表格 */
 .desktop-table {
   display: block;
@@ -801,6 +896,20 @@ onMounted(() => {
   .leases {
     padding: 10px;
     padding-bottom: 70px;
+  }
+  
+  /* 搜索栏移动端样式 */
+  .search-bar {
+    flex-direction: column;
+  }
+  
+  .search-input {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .reset-btn {
+    width: 100%;
   }
   
   /* 隐藏表格，显示卡片 */
